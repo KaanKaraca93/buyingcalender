@@ -42,6 +42,25 @@ class ConfigError(RuntimeError):
     pass
 
 
+def _tenant_from_client_id(client_id: str) -> str:
+    """ci = '<TENANT>~<rastgele>' -> TENANT"""
+    return client_id.split("~", 1)[0].strip() if "~" in client_id else ""
+
+
+def _tenant_from_sso(sso_url: str) -> str:
+    """https://host/<TENANT>/as/token.oauth2 -> TENANT"""
+    parts = [p for p in sso_url.split("//")[-1].split("/")[1:] if p]
+    return parts[0] if parts else ""
+
+
+def _ion_url_from_sso(sso_url: str) -> str:
+    """SSO adresinden ION API gateway adresini turetir (mingle-sso -> mingle-ionapi)."""
+    head = sso_url.split("//", 1)
+    scheme = head[0] + "//" if len(head) == 2 else "https://"
+    host = head[-1].split("/", 1)[0].split(":", 1)[0]
+    return scheme + host.replace("mingle-sso", "mingle-ionapi")
+
+
 @dataclass(frozen=True)
 class IonCredentials:
     """.ionapi service-account dosyasinin icerigi."""
@@ -89,7 +108,31 @@ class IonCredentials:
             with open(path, "r", encoding="utf-8-sig") as fh:
                 return cls.from_ionapi_dict(json.load(fh))
 
-        # Tekil degiskenler (Heroku panelinden elle girmek isteyenler icin)
+        # Kisa isimli degiskenler — .ionapi alan adlariyla birebir.
+        # Heroku panelinde tek tek girmek isteyenler icin en dogal yol:
+        #   ci, cs, saak, sask, sso   (istege bagli: ion, ti)
+        if _env("ci") and _env("saak"):
+            ci = _env("ci")
+            sso = _env("sso") or _env("ION_TOKEN_URL")
+            if not sso:
+                raise ConfigError(
+                    "'sso' degiskeni eksik. Tam token URL'i olmali, ornek: "
+                    "https://mingle-sso.eu1.inforcloudsuite.com/<TENANT>/as/token.oauth2"
+                )
+            tenant = _env("ti") or _tenant_from_client_id(ci) or _tenant_from_sso(sso)
+            if not tenant:
+                raise ConfigError("Tenant cozulemedi; 'ti' degiskenini ekleyin.")
+            return cls(
+                tenant=tenant,
+                client_id=ci,
+                client_secret=_env("cs"),
+                ion_url=(_env("ion") or _ion_url_from_sso(sso)).rstrip("/"),
+                token_url=sso,
+                saak=_env("saak"),
+                sask=_env("sask"),
+            )
+
+        # Tekil degiskenler (ION_ onekli surum)
         if _env("ION_TENANT"):
             return cls(
                 tenant=_env("ION_TENANT"),
@@ -102,8 +145,11 @@ class IonCredentials:
             )
 
         raise ConfigError(
-            "ION kimlik bilgisi bulunamadi. IONAPI_B64 (onerilen) veya IONAPI_JSON / "
-            "IONAPI_FILE / ION_* degiskenlerinden birini tanimlayin."
+            "ION kimlik bilgisi bulunamadi. Su seceneklerden biri tanimlanmali: "
+            "(1) IONAPI_B64 — .ionapi dosyasinin base64'u [onerilen], "
+            "(2) ci + cs + saak + sask + sso, "
+            "(3) ION_TENANT + ION_CLIENT_ID + ION_CLIENT_SECRET + ION_URL + "
+            "ION_TOKEN_URL + ION_SAAK + ION_SASK."
         )
 
 

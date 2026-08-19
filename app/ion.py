@@ -49,7 +49,10 @@ class IonServiceClient:
     """Servis hesabi ile ION API cagirir (M3 CUSEXTMI). Token'i bellekte cache'ler."""
 
     def __init__(self, creds: IonCredentials | None = None, *, timeout: float | None = None):
-        self._cfg = creds or get_ion_credentials()
+        # DIKKAT: credential burada COZULMEZ. Yanlis/eksik config'de uygulama yine de
+        # ayaga kalksin ki /healthz cevap versin ve /readyz hatayi okunabilir sekilde
+        # bildirsin. Aksi halde dyno acilista cokup hicbir cevap donmez.
+        self._creds = creds
         settings = get_settings()
         self._timeout = timeout or settings.m3_timeout_seconds
         self._token: str | None = None
@@ -59,6 +62,12 @@ class IonServiceClient:
             timeout=self._timeout,
             limits=httpx.Limits(max_connections=32, max_keepalive_connections=16),
         )
+
+    @property
+    def _cfg(self) -> IonCredentials:
+        if self._creds is None:
+            self._creds = get_ion_credentials()   # hata ilk kullanimda yuzeye cikar
+        return self._creds
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -85,7 +94,8 @@ class IonServiceClient:
             )
             if resp.status_code != 200:
                 raise M3ApiError(
-                    f"ION token alinamadi ({resp.status_code})", status=resp.status_code
+                    f"ION token alinamadi ({resp.status_code}): {resp.text[:200]}",
+                    status=resp.status_code,
                 )
             payload = resp.json()
             self._token = payload["access_token"]
@@ -147,8 +157,14 @@ class IonUserClient:
     """
 
     def __init__(self, creds: IonCredentials | None = None, *, timeout: float = 20.0):
-        self._cfg = creds or get_ion_credentials()
+        self._creds = creds
         self._client = httpx.AsyncClient(timeout=timeout)
+
+    @property
+    def _cfg(self) -> IonCredentials:
+        if self._creds is None:
+            self._creds = get_ion_credentials()
+        return self._creds
 
     async def aclose(self) -> None:
         await self._client.aclose()

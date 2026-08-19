@@ -115,7 +115,8 @@ sorunu var. Heroku → **More → View logs** ilk bakılacak yer.
 
 ## 5. ION API Gateway'e tanıtma
 
-Adım adım: [`ion/README.md`](ion/README.md). Özetle:
+Adım adım: [`ion/README.md`](ion/README.md). Servis hesabıyla token alma akışının
+tam anlatımı: [`ion/TOKEN.md`](ion/TOKEN.md). Özetle:
 
 1. `ion/swagger-2.0.json` içindeki `"host"` alanını Heroku adresiyle değiştir.
 2. ION API → Available APIs → Add → dosyayı yükle, adı `TAKVIMAPI` yap.

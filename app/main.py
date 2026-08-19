@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import audit
-from .config import ConfigError, get_settings
+from .config import ConfigError, get_ion_credentials, get_settings
 from .ion import IonServiceClient, IonUserClient, M3ApiError
 from .policy import PermissionError_, PolicyError
 from .routes.m3 import router as m3_router
@@ -103,12 +103,33 @@ def create_app() -> FastAPI:
 
     @app.get("/readyz", tags=["ops"])
     async def readyz() -> dict:
-        """ION token alinabiliyor mu — canliya alirken ilk bakilacak yer."""
+        """ION token alinabiliyor mu — canliya alirken ilk bakilacak yer.
+
+        Yapilandirma hatasi olsa bile uygulama ayakta kalir; sorun burada raporlanir.
+        """
+        settings = get_settings()
+        report: dict = {
+            "auth_mode": settings.auth_mode,
+            "api_key_set": bool(settings.api_key),
+        }
+        try:
+            creds = get_ion_credentials()
+            report["tenant"] = creds.tenant
+            report["token_url"] = creds.token_url
+            report["ion_url"] = creds.ion_url
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse(status_code=503, content={
+                "status": "not-ready", "stage": "config", "error": str(exc), **report})
         try:
             await app.state.m3._ensure_token()  # noqa: SLF001
-            return {"status": "ready", "ion": "ok"}
         except Exception as exc:  # noqa: BLE001
-            return JSONResponse(status_code=503, content={"status": "not-ready", "error": str(exc)})
+            return JSONResponse(status_code=503, content={
+                "status": "not-ready", "stage": "token", "error": str(exc), **report})
+        warnings = []
+        if settings.auth_mode == "gateway" and not settings.api_key:
+            warnings.append("AUTH_MODE=gateway ama API_KEY tanimli degil — /v1/* uclari 500 doner.")
+        return {"status": "ready", "ion": "ok", **report,
+                **({"warnings": warnings} if warnings else {})}
 
     app.include_router(m3_router)
     return app

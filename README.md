@@ -139,6 +139,14 @@ ALLOW_DELETE         0 (varsayılan) — DelFieldValue kapalı
 EXTRA_FILES          ileride başka CUGEX tabloları gerekirse (virgülle)
 ```
 
+`IONAPI_B64` yerine değerleri tek tek girmek isterseniz `ci`, `cs`, `saak`,
+`sask`, `sso` yeterlidir — tenant ve ION adresi bunlardan türetilir. İkisi
+birden tanımlıysa `IONAPI_B64` kazanır.
+
+**Yanlış yapılandırmada uygulama yine de ayağa kalkar**; `/healthz` cevap verir
+ve `/readyz` sorunu adlandırır (`stage: config` → credential çözülemedi,
+`stage: token` → ION reddetti).
+
 ---
 
 ## Dosya haritası
@@ -152,7 +160,7 @@ EXTRA_FILES          ileride başka CUGEX tabloları gerekirse (virgülle)
 | `app/service.py` | `list` / `upsert` iş mantığı, süre bütçesi, eşzamanlılık |
 | `app/routes/m3.py` | HTTP endpoint'leri |
 | `app/audit.py` | JSON denetim kaydı |
-| `ion/` | ION API Gateway kaydı: Swagger 2.0 + adım adım talimat |
+| `ion/` | ION API Gateway kaydı (Swagger 2.0 + talimat) ve [token akışı](ion/TOKEN.md) |
 | `tests/` | 52 test |
 
 ## Netleşmesi gereken tek teknik nokta
