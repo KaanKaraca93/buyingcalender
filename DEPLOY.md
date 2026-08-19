@@ -5,7 +5,7 @@ Heroku Config Var'lari ayirir. Yani:
 
 | | Repo | Heroku app | `IONAPI_B64` | ION API kaydi |
 |---|---|---|---|---|
-| TST | `m3-takvim-api` (main) | `...-tst` | TST `.ionapi` | TST tenant'inda `TAKVIMAPI` |
+| TST | `buyingcalender` (main) | `...-tst` | TST `.ionapi` | TST tenant'inda `TAKVIMAPI` |
 | PRD | ayni repo, ayni branch | `...-prd` | PRD `.ionapi` | PRD tenant'inda `TAKVIMAPI` |
 
 PRD'ye gecerken kod tarafinda hicbir sey degismez: ikinci bir Heroku app'i acilir,
@@ -14,31 +14,34 @@ Ilk kurulum **TST** (`ATJZAMEWEF5P4SNV_TST`) icindir.
 
 ---
 
-## 1. Repo (Muzaffer)
+## 1. Repo
 
-GitHub'da **private** repo: `muzafferkaya-ui/m3-takvim-api`
+**Tek gecerli repo: [`KaanKaraca93/buyingcalender`](https://github.com/KaanKaraca93/buyingcalender)**
 
-> Repo olustururken **"Add README" kapali** olmali — zip'te zaten README ve git
-> gecmisi var; GitHub bos repoya README koyarsa ilk push reddedilir.
+Kod bu repoda yasar; Heroku bu repoya baglanir. Muzaffer'in hesabindaki
+`muzafferkaya-ui/m3-takvim-api` yalnizca ilk yedektir, **kullanilmaz** —
+oraya yapilan push Heroku'ya hicbir sey deploy etmez.
 
-Zip'i acinca icinde **hazir bir git deposu** var (commit'ler yapilmis),
-dolayisiyla `git init` / `git add` / `git commit` gerekmez:
+> ⚠️ Repo **Private** olmali. Kod icinde credential yok ama M3 tablo semalari,
+> PLM entity/rol isimleri ve tenant kimligi (`ATJZAMEWEF5P4SNV_TST`) iceriyor.
+> Settings → General → Danger Zone → *Change repository visibility* → Private.
+
+Kod guncellemesi (git ile):
 
 ```bash
 cd m3-takvim-api
-git remote add origin https://github.com/muzafferkaya-ui/m3-takvim-api.git
+git remote add origin https://github.com/KaanKaraca93/buyingcalender.git   # ilk seferde
 git branch -M main
 git push -u origin main
 ```
 
-Git kurulu degilse: repo sayfasindaki **"uploading an existing file"** baglantisi
-ile dosyalari tarayicidan da yukleyebilirsin (o zaman gecmis gitmis olur, sorun degil).
+Git kurulu degilse repo sayfasindaki **"uploading an existing file"** ile
+tarayicidan da yuklenebilir. Dikkat: tarayici yukleyicisi noktayla baslayan
+dosyalari (`.gitignore`, `.env.example`) atlar; onlar **Add file → Create new file**
+ile elle olusturulur.
 
-Sonra **Settings → Collaborators → Kaan'ı ekle** (Heroku'nun private repo'yu
-görebilmesi için).
-
-> `.gitignore` `*.ionapi` ve `.env`'i dışarıda tutuyor. Push öncesi `git status`
-> ile hiçbir credential dosyasının listede olmadığını doğrula.
+> `.gitignore` `*.ionapi` ve `.env`'i disarida tutuyor. Push oncesi `git status`
+> ile hicbir credential dosyasinin listede olmadigini dogrula.
 
 ---
 
@@ -46,7 +49,7 @@ görebilmesi için).
 
 1. **New → Create new app** → ad + **Europe** bölgesi (M3 EU1'de).
 2. **Deploy** sekmesi → *Deployment method* → **GitHub** → hesabı bağla →
-   `m3-takvim-api` → **Connect**.
+   `buyingcalender` → **Connect**.
 3. **Manual deploy** → branch `main` → **Deploy Branch**.
    (İstenirse *Enable Automatic Deploys*.)
 4. Buildpack otomatik `heroku/python` (repo'da `requirements.txt` + `runtime.txt` var).

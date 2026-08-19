@@ -1,5 +1,7 @@
 # ION API Gateway'e custom API olarak tanıtma
 
+> Repo: [`KaanKaraca93/buyingcalender`](https://github.com/KaanKaraca93/buyingcalender)
+
 Amaç: widget'lar Heroku URL'ine **doğrudan** gitmesin. ION API Gateway arkasında
 dursun ki widget mevcut `widgetContext.executeIonApiAsync` çağrısını kullanmaya
 devam edebilsin — böylece tarayıcı tarafında CORS ve token derdi olmaz,
