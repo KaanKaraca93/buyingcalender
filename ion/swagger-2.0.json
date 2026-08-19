@@ -1,0 +1,168 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Buying Takvim M3 API",
+    "description": "PLM takvim widget'lari icin M3 CUSEXTMI proxy'si. ION API Gateway'e custom API olarak tanitilir; widget'lar executeIonApiAsync ile bu API'yi cagirir.",
+    "version": "0.1.0"
+  },
+  "host": "DEGISTIR.herokuapp.com",
+  "basePath": "/",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "apiKey": {
+      "type": "apiKey",
+      "name": "X-Api-Key",
+      "in": "header",
+      "description": "ION API kaydinda sabit baslik olarak tanimlanir; istemciye gorunmez."
+    }
+  },
+  "security": [{ "apiKey": [] }],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Servis ayakta mi",
+        "operationId": "healthz",
+        "security": [],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "summary": "ION token alinabiliyor mu",
+        "operationId": "readyz",
+        "security": [],
+        "responses": { "200": { "description": "Hazir" }, "503": { "description": "Hazir degil" } }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "Cagiranin kimlik/rol bilgisi (bilgilendirme amacli)",
+        "operationId": "me",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/v1/tables": {
+      "get": {
+        "summary": "Izin verilen tablolar ve transaction'lar",
+        "operationId": "tables",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/v1/m3/exec": {
+      "post": {
+        "summary": "CUSEXTMI transaction'ini birebir calistirir, ham MIRecord govdesi doner",
+        "operationId": "m3Exec",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ExecRequest" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "M3 ham yaniti", "schema": { "$ref": "#/definitions/MIResponse" } },
+          "400": { "description": "Izin listesi disi tablo/alan/transaction" },
+          "502": { "description": "M3 hatasi" }
+        }
+      }
+    },
+    "/v1/m3/list": {
+      "post": {
+        "summary": "LstFieldValue - sadelestirilmis okuma",
+        "operationId": "m3List",
+        "parameters": [
+          { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ListRequest" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Gecersiz istek" } }
+      }
+    },
+    "/v1/m3/upsert": {
+      "post": {
+        "summary": "Coklu satir upsert (Chg->Add veya Add->Chg)",
+        "operationId": "m3Upsert",
+        "parameters": [
+          { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/UpsertRequest" } }
+        ],
+        "responses": {
+          "200": { "description": "Satir bazli sonuc" },
+          "413": { "description": "Cok fazla satir - istemci parcalamali" },
+          "503": { "description": "READ_ONLY modda" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ExecRequest": {
+      "type": "object",
+      "required": ["transaction", "params"],
+      "properties": {
+        "transaction": {
+          "type": "string",
+          "example": "LstFieldValue",
+          "description": "LstFieldValue | GetFieldValue | AddFieldValue | ChgFieldValue"
+        },
+        "maxrecs": { "type": "integer", "example": 300 },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "example": { "FILE": "CPSTAKVIM", "PK01": "11", "PK02": "PROD" }
+        }
+      }
+    },
+    "MIResponse": {
+      "type": "object",
+      "properties": {
+        "MIRecord": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "NameValue": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "Name": { "type": "string" },
+                    "Value": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ErrorMessage": { "type": "string" }
+      }
+    },
+    "ListRequest": {
+      "type": "object",
+      "required": ["file"],
+      "properties": {
+        "file": { "type": "string", "example": "CPSTAKVIM" },
+        "keys": { "type": "object", "additionalProperties": { "type": "string" } },
+        "maxrecs": { "type": "integer", "example": 300 }
+      }
+    },
+    "UpsertRequest": {
+      "type": "object",
+      "required": ["file", "rows"],
+      "properties": {
+        "file": { "type": "string", "example": "KOLONCESI" },
+        "strategy": { "type": "string", "enum": ["chg_first", "add_first"] },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "keys": { "type": "object", "additionalProperties": { "type": "string" } },
+              "values": { "type": "object", "additionalProperties": { "type": "string" } },
+              "create_values": { "type": "object", "additionalProperties": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "name": "m3-takvim-api",
+  "description": "Buying Takvim - PLM widget'lari icin M3 CUSEXTMI proxy API",
+  "repository": "https://github.com/muzafferkaya-ui/m3-takvim-api",
+  "keywords": [
+    "infor",
+    "m3",
+    "plm",
+    "fastapi"
+  ],
+  "stack": "heroku-24",
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "env": {
+    "IONAPI_B64": {
+      "description": "credentials.ionapi dosyasinin base64 hali (TST veya PRD - ortami bu belirler)",
+      "required": true
+    },
+    "AUTH_MODE": {
+      "description": "gateway | infor_token | gateway_jwt",
+      "value": "gateway"
+    },
+    "API_KEY": {
+      "description": "gateway modunda ZORUNLU; ION API kaydinda sabit header olarak verilir",
+      "required": true
+    },
+    "ENFORCE_ROLE_POLICY": {
+      "description": "0 = yetki widget'larda kalir",
+      "value": "0"
+    },
+    "ALLOW_DELETE": {
+      "value": "0"
+    },
+    "ALLOWED_ORIGINS": {
+      "description": "Gateway uzerinden gidiliyorsa bos birakilabilir",
+      "required": false
+    },
+    "MAX_ROWS_PER_REQUEST": {
+      "value": "50"
+    },
+    "REQUEST_DEADLINE_SECONDS": {
+      "value": "20"
+    },
+    "WRITE_CONCURRENCY": {
+      "value": "6"
+    },
+    "READ_ONLY": {
+      "value": "0"
+    },
+    "LOG_LEVEL": {
+      "value": "INFO"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+}
