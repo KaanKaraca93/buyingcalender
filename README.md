@@ -1,5 +1,8 @@
 # Buying Takvim — M3 Proxy API
 
+> **Repo:** [`KaanKaraca93/buyingcalender`](https://github.com/KaanKaraca93/buyingcalender) — Heroku bu repoya baglidir, kod guncellemeleri
+> buraya gonderilir. Baska bir kopyaya yapilan push deploy tetiklemez.
+
 PLM takvim widget'ları (`koleksiyon-oncesi-takvim`, `koleksiyon-ici-takvim`,
 `m3-takvim-excel`) bugün M3'e **doğrudan** gidiyor:
 
@@ -117,7 +120,7 @@ uvicorn app.main:app --reload
 ```
 
 ```bash
-python -m pytest -q           # 51 test
+python -m pytest -q           # 52 test
 ```
 
 ---
@@ -150,7 +153,7 @@ EXTRA_FILES          ileride başka CUGEX tabloları gerekirse (virgülle)
 | `app/routes/m3.py` | HTTP endpoint'leri |
 | `app/audit.py` | JSON denetim kaydı |
 | `ion/` | ION API Gateway kaydı: Swagger 2.0 + adım adım talimat |
-| `tests/` | 51 test |
+| `tests/` | 52 test |
 
 ## Netleşmesi gereken tek teknik nokta
 

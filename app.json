@@ -1,7 +1,7 @@
 {
-  "name": "m3-takvim-api",
+  "name": "buyingcalender",
   "description": "Buying Takvim - PLM widget'lari icin M3 CUSEXTMI proxy API",
-  "repository": "https://github.com/muzafferkaya-ui/m3-takvim-api",
+  "repository": "https://github.com/KaanKaraca93/buyingcalender",
   "keywords": [
     "infor",
     "m3",
