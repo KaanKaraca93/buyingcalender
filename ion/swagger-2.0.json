@@ -2,14 +2,20 @@
   "swagger": "2.0",
   "info": {
     "title": "Buying Takvim M3 API",
-    "description": "PLM takvim widget'lari icin M3 CUSEXTMI proxy'si. ION API Gateway'e custom API olarak tanitilir; widget'lar executeIonApiAsync ile bu API'yi cagirir.",
+    "description": "PLM takvim widget'lari icin M3 CUSEXTMI proxy'si. ION API Gateway'e custom API olarak tanitilir; widget'lar executeIonApiAsync ile bu API'yi cagirir. Backend, ION kaydinda sabit header olarak verilen X-Api-Key ile korunur.",
     "version": "0.1.0"
   },
-  "host": "DEGISTIR.herokuapp.com",
+  "host": "buyingcalender-1ff62b7c0e92.herokuapp.com",
   "basePath": "/",
-  "schemes": ["https"],
-  "consumes": ["application/json"],
-  "produces": ["application/json"],
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
   "securityDefinitions": {
     "apiKey": {
       "type": "apiKey",
@@ -18,14 +24,28 @@
       "description": "ION API kaydinda sabit baslik olarak tanimlanir; istemciye gorunmez."
     }
   },
-  "security": [{ "apiKey": [] }],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
   "paths": {
     "/healthz": {
       "get": {
         "summary": "Servis ayakta mi",
         "operationId": "healthz",
         "security": [],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/readyz": {
@@ -33,21 +53,54 @@
         "summary": "ION token alinabiliyor mu",
         "operationId": "readyz",
         "security": [],
-        "responses": { "200": { "description": "Hazir" }, "503": { "description": "Hazir degil" } }
+        "responses": {
+          "200": {
+            "description": "Hazir"
+          },
+          "503": {
+            "description": "Hazir degil"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/v1/me": {
       "get": {
         "summary": "Cagiranin kimlik/rol bilgisi (bilgilendirme amacli)",
         "operationId": "me",
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/v1/tables": {
       "get": {
         "summary": "Izin verilen tablolar ve transaction'lar",
         "operationId": "tables",
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/v1/m3/exec": {
@@ -59,14 +112,31 @@
             "name": "body",
             "in": "body",
             "required": true,
-            "schema": { "$ref": "#/definitions/ExecRequest" }
+            "schema": {
+              "$ref": "#/definitions/ExecRequest"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "M3 ham yaniti", "schema": { "$ref": "#/definitions/MIResponse" } },
-          "400": { "description": "Izin listesi disi tablo/alan/transaction" },
-          "502": { "description": "M3 hatasi" }
-        }
+          "200": {
+            "description": "M3 ham yaniti",
+            "schema": {
+              "$ref": "#/definitions/MIResponse"
+            }
+          },
+          "400": {
+            "description": "Izin listesi disi tablo/alan/transaction"
+          },
+          "502": {
+            "description": "M3 hatasi"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/v1/m3/list": {
@@ -74,9 +144,29 @@
         "summary": "LstFieldValue - sadelestirilmis okuma",
         "operationId": "m3List",
         "parameters": [
-          { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ListRequest" } }
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ListRequest"
+            }
+          }
         ],
-        "responses": { "200": { "description": "OK" }, "400": { "description": "Gecersiz istek" } }
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Gecersiz istek"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
       }
     },
     "/v1/m3/upsert": {
@@ -84,12 +174,122 @@
         "summary": "Coklu satir upsert (Chg->Add veya Add->Chg)",
         "operationId": "m3Upsert",
         "parameters": [
-          { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/UpsertRequest" } }
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertRequest"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Satir bazli sonuc" },
-          "413": { "description": "Cok fazla satir - istemci parcalamali" },
-          "503": { "description": "READ_ONLY modda" }
+          "200": {
+            "description": "Satir bazli sonuc"
+          },
+          "413": {
+            "description": "Cok fazla satir - istemci parcalamali"
+          },
+          "503": {
+            "description": "READ_ONLY modda"
+          }
+        },
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/v1/m3/x/{transaction}": {
+      "get": {
+        "summary": "M3 URL'inin birebir taklidi (GET + query string)",
+        "description": "Widget'ta yalnizca M3_EXEC sabiti degisir: \"M3/m3api-rest/execute/CUSEXTMI\" -> \"TAKVIMAPI/v1/m3/x\". Transaction adi ';maxrecs=300' matrix parametresini icerebilir.",
+        "operationId": "m3Passthrough",
+        "tags": [
+          "takvim"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "transaction",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "x-example": "LstFieldValue;maxrecs=300"
+          },
+          {
+            "name": "FILE",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "x-example": "CPSTAKVIM"
+          },
+          {
+            "name": "PK01",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK02",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK03",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK04",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK05",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK06",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK07",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PK08",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "M3 ham yaniti",
+            "schema": {
+              "$ref": "#/definitions/MIResponse"
+            }
+          },
+          "400": {
+            "description": "Izin listesi disi tablo/alan/transaction"
+          },
+          "502": {
+            "description": "M3 hatasi"
+          }
         }
       }
     }
@@ -97,18 +297,30 @@
   "definitions": {
     "ExecRequest": {
       "type": "object",
-      "required": ["transaction", "params"],
+      "required": [
+        "transaction",
+        "params"
+      ],
       "properties": {
         "transaction": {
           "type": "string",
           "example": "LstFieldValue",
           "description": "LstFieldValue | GetFieldValue | AddFieldValue | ChgFieldValue"
         },
-        "maxrecs": { "type": "integer", "example": 300 },
+        "maxrecs": {
+          "type": "integer",
+          "example": 300
+        },
         "params": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
-          "example": { "FILE": "CPSTAKVIM", "PK01": "11", "PK02": "PROD" }
+          "additionalProperties": {
+            "type": "string"
+          },
+          "example": {
+            "FILE": "CPSTAKVIM",
+            "PK01": "11",
+            "PK02": "PROD"
+          }
         }
       }
     },
@@ -125,44 +337,96 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "Name": { "type": "string" },
-                    "Value": { "type": "string" }
+                    "Name": {
+                      "type": "string"
+                    },
+                    "Value": {
+                      "type": "string"
+                    }
                   }
                 }
               }
             }
           }
         },
-        "ErrorMessage": { "type": "string" }
+        "ErrorMessage": {
+          "type": "string"
+        }
       }
     },
     "ListRequest": {
       "type": "object",
-      "required": ["file"],
+      "required": [
+        "file"
+      ],
       "properties": {
-        "file": { "type": "string", "example": "CPSTAKVIM" },
-        "keys": { "type": "object", "additionalProperties": { "type": "string" } },
-        "maxrecs": { "type": "integer", "example": 300 }
+        "file": {
+          "type": "string",
+          "example": "CPSTAKVIM"
+        },
+        "keys": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "maxrecs": {
+          "type": "integer",
+          "example": 300
+        }
       }
     },
     "UpsertRequest": {
       "type": "object",
-      "required": ["file", "rows"],
+      "required": [
+        "file",
+        "rows"
+      ],
       "properties": {
-        "file": { "type": "string", "example": "KOLONCESI" },
-        "strategy": { "type": "string", "enum": ["chg_first", "add_first"] },
+        "file": {
+          "type": "string",
+          "example": "KOLONCESI"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "chg_first",
+            "add_first"
+          ]
+        },
         "rows": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "keys": { "type": "object", "additionalProperties": { "type": "string" } },
-              "values": { "type": "object", "additionalProperties": { "type": "string" } },
-              "create_values": { "type": "object", "additionalProperties": { "type": "string" } }
+              "keys": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "create_values": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "takvim",
+      "description": "M3 takvim tablolari (CUSEXTMI)"
+    }
+  ]
 }

@@ -56,11 +56,24 @@ ileride sunucu tarafında kontrol istenirse diye hazır durur; kendiliğinden de
 | GET | `/readyz` | ION token alınabiliyor mu |
 | GET | `/v1/me` | Çağıranın kimliği (bilgilendirme) |
 | GET | `/v1/tables` | İzin listesi ve aktif ayarlar |
-| POST | **`/v1/m3/exec`** | **M3'e birebir geçiş — widget migrasyonu için** |
+| GET | **`/v1/m3/x/{transaction}`** | **M3 URL'inin birebir taklidi — widget'ta tek satır değişir** |
+| POST | `/v1/m3/exec` | Aynı işin JSON gövdeli hâli |
 | POST | `/v1/m3/list` | `LstFieldValue`, sadeleştirilmiş |
 | POST | `/v1/m3/upsert` | Çoklu satır upsert |
 
-### `/v1/m3/exec` — widget'ı en az değiştiren yol
+### `/v1/m3/x` — widget'ı en az değiştiren yol
+
+```js
+M3_EXEC = "M3/m3api-rest/execute/CUSEXTMI";   // eski
+M3_EXEC = "TAKVIMAPI/v1/m3/x";                // yeni — değişen tek satır
+```
+
+GET, query string, `;maxrecs=` matrix parametresi, yanıt gövdesi **ve M3'ün
+durum kodu** birebir korunur. Son madde kritik: `m3-takvim-excel` widget'ı
+`AddFieldValue` → `ChgFieldValue` fallback'ini hata gövdesindeki
+`already exist` metnine bakarak yapıyor; hata sarmalanırsa bu mantık bozulur.
+
+### `/v1/m3/exec` — aynı işin JSON gövdeli hâli
 
 ```jsonc
 POST /v1/m3/exec
@@ -120,7 +133,7 @@ uvicorn app.main:app --reload
 ```
 
 ```bash
-python -m pytest -q           # 52 test
+python -m pytest -q           # 96 test
 ```
 
 ---
@@ -161,7 +174,7 @@ ve `/readyz` sorunu adlandırır (`stage: config` → credential çözülemedi,
 | `app/routes/m3.py` | HTTP endpoint'leri |
 | `app/audit.py` | JSON denetim kaydı |
 | `ion/` | ION API Gateway kaydı (Swagger 2.0 + talimat) ve [token akışı](ion/TOKEN.md) |
-| `tests/` | 52 test |
+| `tests/` | 96 test (3 widget'in tum M3 cagrilari dahil) |
 
 ## Netleşmesi gereken tek teknik nokta
 

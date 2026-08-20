@@ -16,13 +16,35 @@ class FakeM3:
         self.existing = set(existing or ())
         self.calls: list[tuple[str, dict]] = []
         self.delay = delay
+        # M3'un is-katmani hatasinda dondurdugu durum kodu; testlerde degistirilebilir
+        self.error_status = 200
 
     async def aclose(self) -> None:  # gercek istemciyle ayni arayuz
         return None
 
     async def execute_raw(self, program, transaction, params=None, *, max_recs=None):
-        records = await self.execute(program, transaction, params, max_recs=max_recs)
+        """Gercek M3 gibi davranir: is-katmani hatasi EXCEPTION DEGIL,
+        HTTP 200 govdesinde ErrorMessage olarak doner."""
+        try:
+            records = await self.execute(program, transaction, params, max_recs=max_recs)
+        except M3ApiError as exc:
+            if str(exc).startswith("HTTP "):
+                raise                      # tasima katmani hatasi -> gercekten firlatilir
+            return {"ErrorMessage": str(exc), "ErrorType": "BusinessError"}
         return {"MIRecord": [
+            {"NameValue": [{"Name": k, "Value": v} for k, v in rec.items()]}
+            for rec in records
+        ]}
+
+    async def execute_passthrough(self, program, transaction, params=None, *, max_recs=None):
+        """Gercek M3 gibi: is-katmani hatasi govde + durum kodu olarak doner."""
+        try:
+            records = await self.execute(program, transaction, params, max_recs=max_recs)
+        except M3ApiError as exc:
+            if str(exc).startswith("HTTP "):
+                return 500, {"ErrorMessage": str(exc)}
+            return self.error_status, {"ErrorMessage": str(exc), "ErrorType": "BusinessError"}
+        return 200, {"MIRecord": [
             {"NameValue": [{"Name": k, "Value": v} for k, v in rec.items()]}
             for rec in records
         ]}

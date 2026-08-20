@@ -29,14 +29,42 @@ class M3ApiError(RuntimeError):
         self.status = status
 
 
+#: M3'un is-katmani hata kodlari (gercek yanitlardan dogrulandi, 20.08.2026)
+M3_ERR_NOT_FOUND = "XRE0103"       # "Record does not exist"
+M3_ERR_ALREADY_EXISTS = "XRE0104"  # "The record already exists"
+
+
+def m3_error_of(body: Any) -> tuple[str, str] | None:
+    """Govdede is-katmani hatasi varsa (kod, mesaj) dondurur, yoksa None.
+
+    DIKKAT - gercek M3 davranisi (HAR ile dogrulandi):
+        HTTP 200
+        {"@type":"ServerReturnedNOK","@code":"XRE0103","@cfg":"  ","@field":"",
+         "Message":"Record does not exist"}
+    Yani hata HTTP koduyla DEGIL, 200 govdesinde geliyor ve alan adi
+    `ErrorMessage` degil **`Message`**.
+    """
+    if not isinstance(body, dict):
+        return None
+    msg = body.get("ErrorMessage") or body.get("Message")
+    code = str(body.get("ErrorCode") or body.get("@code") or "")
+    is_err = (
+        body.get("@type") == "ServerReturnedNOK"
+        or bool(body.get("ErrorType"))
+        or (bool(msg) and not body.get("MIRecord"))
+    )
+    return (code, str(msg or "bilinmeyen hata")) if is_err else None
+
+
 def parse_mi_response(body: dict, program: str, transaction: str) -> list[dict[str, str]]:
     """MIRecord[].NameValue[] -> [{Name: Value}]; is-katmani hatasini yukseltir."""
-    err_msg = body.get("ErrorMessage") or body.get("Message")
-    if body.get("ErrorType") or (err_msg and not body.get("MIRecord")):
+    err = m3_error_of(body)
+    if err:
+        code, msg = err
         raise M3ApiError(
-            f"{program}/{transaction}: {err_msg or 'bilinmeyen hata'}",
+            f"{program}/{transaction}: {msg}",
             program=program, transaction=transaction,
-            code=str(body.get("ErrorCode", "")), field=str(body.get("ErrorField", "")),
+            code=code, field=str(body.get("ErrorField") or body.get("@field") or ""),
         )
     records: list[dict[str, str]] = []
     for rec in body.get("MIRecord", []) or []:
@@ -119,7 +147,10 @@ class IonServiceClient:
         """
         tx = f"{transaction};maxrecs={max_recs}" if max_recs else transaction
         url = f"{self._cfg.ion_url}/{self._cfg.tenant}/M3/m3api-rest/execute/{program}/{tx}"
-        query = {k: str(v) for k, v in (params or {}).items() if v is not None and v != ""}
+        # DIKKAT: bos string DUSURULMEZ. Widget'taki `_qs` bos degerleri de
+        # gonderiyor (orn. A430="" ya da ileride bir tarihi temizleme). Bunlari
+        # atlamak sessiz davranis farki yaratir; yalnizca None atlanir.
+        query = {k: str(v) for k, v in (params or {}).items() if v is not None}
 
         resp = await self._request(url, query)
         if resp.status_code == 401:
@@ -132,6 +163,29 @@ class IonServiceClient:
                 program=program, transaction=transaction, status=resp.status_code,
             )
         return resp.json()
+
+    async def execute_passthrough(self, program: str, transaction: str,
+                                  params: dict[str, Any] | None = None,
+                                  *, max_recs: int | None = None) -> tuple[int, Any]:
+        """M3'un DURUM KODUNU ve GOVDESINI oldugu gibi dondurur (hata dahil).
+
+        Neden: `m3-takvim-excel` widget'i AddFieldValue -> ChgFieldValue fallback'ini
+        hata govdesindeki "already exist" metnine bakarak yapiyor
+        (`extractM3ErrorMessage` -> body.ErrorMessage / body.Message).
+        Hatayi kendi formatimiza sarsak bu mantik sessizce bozulurdu.
+        """
+        tx = f"{transaction};maxrecs={max_recs}" if max_recs else transaction
+        url = f"{self._cfg.ion_url}/{self._cfg.tenant}/M3/m3api-rest/execute/{program}/{tx}"
+        query = {k: str(v) for k, v in (params or {}).items() if v is not None}
+
+        resp = await self._request(url, query)
+        if resp.status_code == 401:
+            self.invalidate_token()
+            resp = await self._request(url, query)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {"detail": resp.text[:1000]}
 
     async def execute(self, program: str, transaction: str,
                       params: dict[str, Any] | None = None,

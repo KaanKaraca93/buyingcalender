@@ -15,11 +15,13 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from .ion import M3ApiError
+from .ion import M3_ERR_ALREADY_EXISTS, M3_ERR_NOT_FOUND, M3ApiError
 from .policy import PROGRAM, TableSpec
 
-# M3 hata mesaji dil/versiyona gore degisebilir -> desen listesi ile eslesiyoruz.
-# NOT: gercek ortamda dogrulanmali (bkz. README "Netlesmesi gerekenler").
+# Once HATA KODU ile eslesiriz (dilden bagimsiz), metin yalnizca yedek.
+# Gercek yanitlar (20.08.2026, TST):
+#   XRE0103 -> "Record does not exist"
+#   XRE0104 -> "The record already exists"
 ALREADY_EXISTS_PATTERNS = re.compile(
     r"already exist|zaten (var|mevcut)|duplicate|kayit var", re.IGNORECASE
 )
@@ -27,6 +29,14 @@ NOT_FOUND_PATTERNS = re.compile(
     r"not found|does not exist|no record|record not|bulunamadi|kayit yok|kayit bulunamadi",
     re.IGNORECASE,
 )
+
+
+def _is_not_found(exc: M3ApiError) -> bool:
+    return exc.code == M3_ERR_NOT_FOUND or bool(NOT_FOUND_PATTERNS.search(str(exc)))
+
+
+def _is_already_exists(exc: M3ApiError) -> bool:
+    return exc.code == M3_ERR_ALREADY_EXISTS or bool(ALREADY_EXISTS_PATTERNS.search(str(exc)))
 
 Strategy = Literal["chg_first", "add_first"]
 
@@ -74,19 +84,19 @@ async def upsert_row(client, spec: TableSpec, keys: dict[str, str],
     if strategy == "add_first":
         first_tx, first_payload = "AddFieldValue", full
         second_tx, second_payload = "ChgFieldValue", values
-        fallback_pattern = ALREADY_EXISTS_PATTERNS
+        should_fallback = _is_already_exists
         first_action, second_action = "added", "changed"
     else:
         first_tx, first_payload = "ChgFieldValue", values
         second_tx, second_payload = "AddFieldValue", full
-        fallback_pattern = NOT_FOUND_PATTERNS
+        should_fallback = _is_not_found
         first_action, second_action = "changed", "added"
 
     try:
         await client.execute(PROGRAM, first_tx, {**base, **first_payload}, max_recs=None)
         return first_action
     except M3ApiError as exc:
-        if not fallback_pattern.search(str(exc)):
+        if not should_fallback(exc):
             raise
     await client.execute(PROGRAM, second_tx, {**base, **second_payload}, max_recs=None)
     return second_action

@@ -12,13 +12,15 @@ from __future__ import annotations
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from .. import audit
 from ..auth import Caller, get_caller
 from ..config import get_settings
-from ..ion import M3ApiError
+from ..ion import M3ApiError, m3_error_of
 from ..policy import (
     PROGRAM,
+    READ_TRANSACTIONS,
     PolicyError,
     allowed_transactions,
     check_write_allowed,
@@ -99,13 +101,27 @@ async def m3_exec(payload: ExecRequest, request: Request,
     """
     settings = get_settings()
     tx = payload.transaction.strip()
+    params = {k.upper(): str(v) for k, v in payload.params.items()}
+
+    # maxrecs yalnizca okuma transaction'larinda anlamli; yazmada gonderilirse
+    # M3 tarafinda gereksiz matrix parametresi olusur.
+    max_recs = None
+    if payload.maxrecs and tx in READ_TRANSACTIONS:
+        max_recs = min(payload.maxrecs, settings.max_maxrecs)
+
+    return await _run_exec(request, caller, tx, params, max_recs)
+
+
+async def _run_exec(request: Request, caller: Caller, tx: str,
+                    params: dict[str, str], max_recs: int | None) -> dict:
+    """`/v1/m3/exec` (POST) ve `/v1/m3/x/...` (GET) ucunun ortak govdesi."""
+    settings = get_settings()
 
     if tx not in allowed_transactions(allow_delete=settings.allow_delete):
         raise HTTPException(status_code=400, detail=f"Izin verilmeyen transaction: {tx}")
-    if settings.read_only and tx not in ("LstFieldValue", "GetFieldValue"):
+    if settings.read_only and tx not in READ_TRANSACTIONS:
         raise HTTPException(status_code=503, detail="Servis salt-okunur modda (READ_ONLY=1).")
 
-    params = {k.upper(): str(v) for k, v in payload.params.items()}
     file_name = params.get("FILE", "")
     try:
         spec = _table(file_name)
@@ -113,9 +129,10 @@ async def m3_exec(payload: ExecRequest, request: Request,
         audit.log_denied(caller.email, str(exc), table=file_name)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    values = {k: v for k, v in params.items() if k not in PK_FIELDS and k != "FILE"}
     keys = {k: v for k, v in params.items() if k in PK_FIELDS}
-    if tx in ("AddFieldValue", "AddFieldValueEx", "ChgFieldValue"):
+    values = {k: v for k, v in params.items() if k not in PK_FIELDS and k != "FILE"}
+
+    if tx not in READ_TRANSACTIONS:
         try:
             spec.validate_values(values)
             if settings.enforce_role_policy:
@@ -127,25 +144,67 @@ async def m3_exec(payload: ExecRequest, request: Request,
         except PermissionError as exc:
             audit.log_denied(caller.email, str(exc), table=spec.name)
             raise HTTPException(status_code=403, detail=str(exc)) from exc
-
-    max_recs = None
-    if payload.maxrecs:
-        max_recs = min(payload.maxrecs, settings.max_maxrecs)
+    if tx not in READ_TRANSACTIONS:
+        max_recs = None
 
     started = time.monotonic()
-    try:
-        body = await request.app.state.m3.execute_raw(
-            PROGRAM, tx, {"FILE": spec.name, **keys, **values}, max_recs=max_recs
-        )
-    except M3ApiError as exc:
-        raise HTTPException(status_code=502, detail=f"M3 hatasi: {exc}") from exc
+    status, body = await request.app.state.m3.execute_passthrough(
+        PROGRAM, tx, {"FILE": spec.name, **keys, **values}, max_recs=max_recs
+    )
 
     elapsed = int((time.monotonic() - started) * 1000)
-    audit.log_event("m3.exec", user=caller.email, table=spec.name, tx=tx,
-                    keys=keys, ms=elapsed,
-                    records=len(body.get("MIRecord") or []),
-                    error=body.get("ErrorMessage") or None)
-    return body
+    m3_err = m3_error_of(body)
+    audit.log_event(
+        "m3.exec", user=caller.email, table=spec.name, tx=tx,
+        keys=keys, ms=elapsed, status=status,
+        records=len(body.get("MIRecord") or []) if isinstance(body, dict) else 0,
+        m3_error_code=m3_err[0] if m3_err else None,
+        m3_error=m3_err[1] if m3_err else None,
+    )
+
+    # M3'un durum kodu ve govdesi AYNEN aktarilir - widget'in hata mantigi bozulmasin.
+    # Ek olarak hata varsa BASLIGA koyariz: govde/durum degismedigi icin widget'i
+    # etkilemez, ama gateway/log tarafinda sessiz basarisizlik gorunur olur.
+    headers = {}
+    if m3_err:
+        headers["X-M3-Error-Code"] = m3_err[0] or "UNKNOWN"
+        headers["X-M3-Error"] = m3_err[1][:180]
+    return JSONResponse(status_code=status, content=body, headers=headers)
+
+
+# --------------------------------------------------------------------------- #
+# 1b. M3 URL'inin BIREBIR taklidi — widget'ta tek satir degisir
+# --------------------------------------------------------------------------- #
+@router.get("/m3/x/{transaction:path}")
+async def m3_passthrough(transaction: str, request: Request,
+                         caller: Caller = Depends(get_caller)) -> dict:
+    """M3'un kendi URL semasini taklit eder; GET + query string.
+
+    Widget'taki tek degisiklik:
+        M3_EXEC = "M3/m3api-rest/execute/CUSEXTMI"
+        M3_EXEC = "TAKVIMAPI/v1/m3/x"                <- yalnizca bu satir
+
+    Geri kalan her sey ayni kalir:
+        M3_EXEC + "/LstFieldValue;maxrecs=300?FILE=CPSTAKVIM&PK01=11"
+        M3_EXEC + "/ChgFieldValue?FILE=KOLONCESI&PK01=...&A230=2026-03-12"
+
+    `;maxrecs=` matrix parametresi, metod (GET) ve yanit govdesi birebir korunur;
+    boylece widget'ta `_qs`, `_parseM3` ve hata yonetimi degismek zorunda kalmaz.
+    """
+    settings = get_settings()
+
+    # "LstFieldValue;maxrecs=300" -> tx + matrix parametreleri
+    raw = transaction.strip().strip("/")
+    parts = raw.split(";")
+    tx = parts[0].strip()
+    max_recs = None
+    for extra in parts[1:]:
+        name, _, value = extra.partition("=")
+        if name.strip().lower() == "maxrecs" and value.strip().isdigit():
+            max_recs = min(int(value.strip()), settings.max_maxrecs)
+
+    params = {k.upper(): v for k, v in request.query_params.items()}
+    return await _run_exec(request, caller, tx, params, max_recs)
 
 
 # --------------------------------------------------------------------------- #

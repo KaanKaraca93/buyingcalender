@@ -96,6 +96,15 @@ def create_app() -> FastAPI:
             content={"detail": f"ION'a ulasilamadi: {type(exc).__name__}: {exc}"},
         )
 
+    @app.options("/{full_path:path}", include_in_schema=False)
+    async def _options(full_path: str):
+        """Gateway preflight'i backend'e iletirse bos gecmesin diye guvenlik agi.
+
+        Tarayici aslinda ION gateway ile konusuyor (HAR'da OPTIONS -> 204
+        mingle-ionapi'ye gidiyor), bu yuzden normalde buraya hic ulasmaz.
+        """
+        return JSONResponse(status_code=204, content=None)
+
     @app.get("/healthz", tags=["ops"])
     async def healthz() -> dict:
         """Kimlik dogrulamasi gerektirmez — Heroku/uptime kontrolu icin."""
