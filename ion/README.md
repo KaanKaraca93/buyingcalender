@@ -60,8 +60,12 @@ En düşük riskli yol `/v1/m3/x` ucu: M3'ün URL şemasını birebir taklit ede
 // eski
 M3_EXEC = "M3/m3api-rest/execute/CUSEXTMI";
 // yeni
-M3_EXEC = "TAKVIMAPI/v1/m3/x";
+M3_EXEC = "CustomerApi/TAKVIMAPI/v1/m3/x";
 ```
+
+> **`CustomerApi/` öneki şart.** ION kaydı Base URL'i şu şekilde üretiyor:
+> `mingle-ionapi.eu1.inforcloudsuite.com/<TENANT>/CustomerApi/TAKVIMAPI`
+> Doğrulanmış hâli ION → Documentation ekranında yazar; oradan kopyala.
 
 `_qs`, `_parseM3`, metod (GET), hata yönetimi, rol kontrolleri — hepsi aynı kalır.
 

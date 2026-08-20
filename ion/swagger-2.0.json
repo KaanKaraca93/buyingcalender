@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Buying Takvim M3 API",
-    "description": "PLM takvim widget'lari icin M3 CUSEXTMI proxy'si. ION API Gateway'e custom API olarak tanitilir; widget'lar executeIonApiAsync ile bu API'yi cagirir. Backend, ION kaydinda sabit header olarak verilen X-Api-Key ile korunur.",
+    "description": "PLM takvim widget'lari icin M3 CUSEXTMI proxy'si. ION API Gateway'e custom API olarak tanitilir; widget'lar executeIonApiAsync ile bu API'yi cagirir. Backend, ION kaydinda sabit header olarak verilen X-Api-Key ile korunur. Base URL ION kaydinda 'CustomerApi/TAKVIMAPI' onekiyle olusur; widget bu oneki kullanir.",
     "version": "0.1.0"
   },
   "host": "buyingcalender-1ff62b7c0e92.herokuapp.com",
@@ -220,6 +220,14 @@
             "required": true,
             "type": "string",
             "x-example": "LstFieldValue;maxrecs=300"
+          },
+          {
+            "name": "maxrecs",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "description": "Yedek yol: ';maxrecs=300' matrix parametresi yerine kullanilabilir.",
+            "x-example": 300
           },
           {
             "name": "FILE",

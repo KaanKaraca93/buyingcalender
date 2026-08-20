@@ -204,6 +204,14 @@ async def m3_passthrough(transaction: str, request: Request,
             max_recs = min(int(value.strip()), settings.max_maxrecs)
 
     params = {k.upper(): v for k, v in request.query_params.items()}
+
+    # YEDEK YOL: ION Gateway path sablonunda ';' sorun cikarirsa maxrecs query
+    # parametresi olarak da gonderilebilir:  /v1/m3/x/LstFieldValue?maxrecs=300&FILE=...
+    # Bu deger M3'e alan olarak GITMEZ, matrix parametresine cevrilir.
+    qs_maxrecs = params.pop("MAXRECS", None)
+    if max_recs is None and qs_maxrecs and str(qs_maxrecs).isdigit():
+        max_recs = min(int(qs_maxrecs), settings.max_maxrecs)
+
     return await _run_exec(request, caller, tx, params, max_recs)
 
 

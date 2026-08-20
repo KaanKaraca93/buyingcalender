@@ -195,3 +195,24 @@ def test_oncesi_gercek_add_payload(client):
     _, params = client.app.state.m3.calls[-1]
     assert params["A330"] == "Tasarım"
     assert params["A230"] == "" and params["A430"] == ""
+
+
+# --------------------------------------------------------------------------- #
+# ION Gateway yolu - ';' yerine query parametresi yedegi
+# --------------------------------------------------------------------------- #
+def test_maxrecs_query_parametresi_olarak_da_kabul_edilir(client):
+    """Gateway path sablonu ';maxrecs=300' ile sorun cikarirsa yedek yol."""
+    r = client.get("/v1/m3/x/LstFieldValue",
+                   params={"maxrecs": "300", "FILE": "CPSTAKVIM", "PK01": "11"})
+    assert r.status_code == 200, r.text
+    tx, params = client.app.state.m3.calls[-1]
+    assert tx == "LstFieldValue"
+    assert "MAXRECS" not in params, "maxrecs M3'e alan olarak gitmemeli"
+    assert params == {"FILE": "CPSTAKVIM", "PK01": "11"}
+
+
+def test_matrix_parametresi_onceliklidir(client):
+    r = client.get("/v1/m3/x/LstFieldValue;maxrecs=50",
+                   params={"maxrecs": "300", "FILE": "CPSTAKVIM", "PK01": "11"})
+    assert r.status_code == 200
+    assert "MAXRECS" not in client.app.state.m3.calls[-1][1]
